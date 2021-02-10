@@ -14,6 +14,6 @@ git add -A
 git commit -m 'deploy'
 
 # if you are deploying to https://<USERNAME>.github.io/<REPO>
-git push -f https://github.com/BrayanIribe/NMS-SaveEditor.git master:gh-pages
+git push -f https://github.com/BrayanIribe/dna-rnam-prettifier.git master:gh-pages
 
 cd -

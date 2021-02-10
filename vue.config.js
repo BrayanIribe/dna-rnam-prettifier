@@ -1,3 +1,3 @@
 module.exports = {
-  // publicPath: "/NMS-SaveEditor/",
+  publicPath: "/dna-rnam-prettifier/",
 };
