@@ -46,6 +46,7 @@
         v-model="prettifiedOutput"
         class="form-control w-100 mb-3 dna-box"
         rows="10"
+        readonly
       ></textarea>
       <div class="text-right">
         <button
@@ -66,6 +67,24 @@
           class="btn btn-dark"
           @click="downloadTxt"
           :disabled="!prettifiedOutput || !prettifiedOutput.length"
+        >
+          Download TXT
+        </button>
+      </div>
+      <h3 class="text-dark d-block mb-4">Ribosomal translation</h3>
+      <textarea
+        v-model="form.mutationInput"
+        class="form-control w-100 mb-3 dna-box"
+        rows="10"
+      ></textarea>
+      <div class="text-right w-100">
+        <button class="btn btn-primary mr-3" @click="findMutation">
+          Find mutations
+        </button>
+        <button
+          class="btn btn-dark"
+          @click="downloadMutationTxt"
+          :disabled="!outMutation || !outMutation.length"
         >
           Download TXT
         </button>
@@ -116,7 +135,9 @@ export default {
         cellLength: 10,
         totalRows: 5,
         isRna: false,
+        mutationInput: "",
       },
+      outMutation: "",
     };
   },
   computed: {
@@ -157,7 +178,13 @@ export default {
         csv.push(cells);
       }
 
-      download(csv.generate(), `dna-${new Date().getTime()}-format.csv`);
+      const length = this.prettifiedOutput
+        .toUpperCase()
+        .replace(/[^A-Za-z]/g, "")
+        .trim().length;
+      const kind = this.form.isRna ? "rna" : "dna";
+
+      download(csv.generate(), `${kind}-${new Date().getTime()}-${length}.csv`);
     },
     downloadTxt() {
       const { prettifiedOutput } = this;
@@ -166,9 +193,29 @@ export default {
         return;
       }
 
-      const format = this.$canCsv ? "format" : "nf";
+      const length = this.inputData
+        .toUpperCase()
+        .replace(/[^A-Za-z]/g, "")
+        .trim().length;
+      const kind = this.form.isRna ? "rna" : "dna";
+      download(
+        prettifiedOutput,
+        `${kind}-${new Date().getTime()}-${length}.txt`
+      );
+    },
+    downloadMutationTxt() {
+      const { outMutation } = this;
+      if (!outMutation || !outMutation.length) {
+        alert("Error: No data to download!");
+        return;
+      }
 
-      download(prettifiedOutput, `dna-${new Date().getTime()}-${format}.txt`);
+      const length = outMutation
+        .toUpperCase()
+        .replace(/[^A-Za-z]/g, "")
+        .trim().length;
+      const kind = this.form.isRna ? "rna" : "dna";
+      download(outMutation, `${kind}-${new Date().getTime()}-${length}.txt`);
     },
     prettify() {
       const rows = this.inputData
@@ -178,7 +225,7 @@ export default {
       const cell_length = this.form.cellLength;
       const cells_per_row = this.form.totalRows;
       const total_cells = Math.round(rows.length / cell_length);
-      this.form.isRna = this.inputData.includes("U");
+      this.form.isRna = this.inputData.includes("T");
       if (cell_length <= 0 || cells_per_row <= 0) {
         this.prettifiedOutput = rows;
         return;
@@ -188,12 +235,14 @@ export default {
       let totalNucleotides = 0;
       let totalRows = 0;
       let idx = 0;
-      for (; i < total_cells; i++) {
+      for (; i < total_cells * 3; i++) {
         if (i % cells_per_row === 0 && i > 0) {
           buff.push(` ${totalNucleotides}\n`);
           totalRows++;
           idx = 0;
         }
+        if (i * cell_length >= rows.length) break;
+
         let cell = rows.substr(i * cell_length, cell_length);
         totalNucleotides += cell.length;
         if (cell.length < cell_length)
@@ -228,6 +277,66 @@ export default {
           return e;
         })
         .join("\n");
+    },
+    findMutation() {
+      const file = this.form.mutationInput
+        .replace(/[^A-Za-z]/g, "")
+        .toUpperCase();
+      this.form.isRna = file.includes("T");
+      const chainStart = "AUG";
+      const chainEnd = ["UAA", "UAG", "UGA"];
+      let chains = file;
+
+      let out = "";
+
+      let i = 0;
+      while (i < 999) {
+        let idx = chains.indexOf(chainStart, 0);
+        if (idx === -1) {
+          out += chains;
+          break;
+        }
+
+        let temp_chain = chains
+          .substr(idx)
+          .match(/.{1,3}/g)
+          .join(",");
+
+        let end = "";
+        let end_chains = [];
+        for (end of chainEnd) {
+          const end_idx = temp_chain.indexOf(end);
+          if (end_idx !== -1) {
+            end_chains.push({ end, end_idx });
+          }
+        }
+
+        let low_end_idx = { end: "???", end_idx: 999999 };
+        for (let i = 0; i < end_chains.length; i++) {
+          if (end_chains[i].end_idx < low_end_idx.end_idx)
+            low_end_idx = end_chains[i];
+        }
+
+        out += chains.substr(0, idx);
+        if (low_end_idx.end_idx === 999999) {
+          break;
+        }
+
+        let payload =
+          "[" +
+          temp_chain.substr(0, low_end_idx.end_idx) +
+          `${low_end_idx.end}],`;
+
+        out += payload;
+        const msg = temp_chain
+          .substr(low_end_idx.end_idx + low_end_idx.end.length)
+          .split(",")
+          .join("");
+        chains = msg;
+        i++;
+      }
+      this.form.mutationInput = out;
+      this.outMutation = out;
     },
   },
   created() {
