@@ -1,7 +1,6 @@
-# NMS-SaveEditor
+# dna-rnam-prettifier
 
-Simple web NMS difficulty editor
+Simple web-based DNA/RNAm prettifier 
 
-https://brayaniribe.github.io/NMS-SaveEditor
+https://brayaniribe.github.io/dna-rnam-prettifier
 
-**IM NOT RESPONSIBLE FOR DAMAGES, THIS TOOL IS EXPERIMENTAL!!**
